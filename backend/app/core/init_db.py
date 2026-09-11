@@ -1,6 +1,7 @@
 import logging
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, text
+from app.core.config import settings
 from app.core.database import engine, Base, AsyncSessionLocal
 import app.models  # Ensure all models are registered
 from app.models.user import User
@@ -24,19 +25,19 @@ async def init_db():
 
     async with AsyncSessionLocal() as session:
         # 1. Seed Admin User
-        admin_res = await session.execute(select(User).where(User.username == "admin"))
+        admin_res = await session.execute(select(User).where(User.role == "ADMIN"))
         admin = admin_res.scalar_one_or_none()
         if not admin:
             admin = User(
-                username="admin",
-                email="admin@college.edu",
-                password_hash=get_password_hash("Admin@123"),
+                username=settings.DEFAULT_ADMIN_USERNAME,
+                email=settings.DEFAULT_ADMIN_EMAIL,
+                password_hash=get_password_hash(settings.DEFAULT_ADMIN_PASSWORD),
                 full_name="System Administrator",
                 role="ADMIN",
                 is_active=True
             )
             session.add(admin)
-            logger.info("Default admin user created: admin / Admin@123")
+            logger.info(f"Default admin user created: {settings.DEFAULT_ADMIN_USERNAME}")
 
         # 2. Seed Departments
         dept_res = await session.execute(select(Department).where(Department.code == "CSE"))

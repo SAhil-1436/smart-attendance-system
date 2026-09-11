@@ -8,7 +8,8 @@ import {
   Sparkles,
   Search,
   Bell,
-  ScanFace
+  ScanFace,
+  KeyRound
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Badge } from '../ui/Badge';
@@ -18,6 +19,7 @@ export default function Navbar({
   activeTab, 
   onToggleMobileMenu, 
   onOpenLogin,
+  onOpenChangePassword,
   health,
   onLaunchKiosk
 }) {
@@ -78,6 +80,13 @@ export default function Navbar({
               <span className="text-xs font-semibold text-white leading-tight">{user?.full_name}</span>
               <span className="text-[10px] text-indigo-400 font-mono uppercase">{user?.role}</span>
             </div>
+            <button
+              onClick={onOpenChangePassword}
+              title="Change Password"
+              className="p-2 rounded-xl bg-slate-800/80 hover:bg-indigo-500/20 text-slate-300 hover:text-indigo-400 border border-slate-700/60 transition"
+            >
+              <KeyRound className="w-4 h-4" />
+            </button>
             <button
               onClick={logout}
               title="Sign Out"

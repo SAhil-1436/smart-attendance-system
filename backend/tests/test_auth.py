@@ -116,3 +116,46 @@ async def test_logout_and_audit():
         )
         logs = audit_res.scalars().all()
         assert len(logs) >= 2
+
+@pytest.mark.asyncio
+async def test_change_password():
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        # 1. Login with current password
+        login_resp = await ac.post("/api/v1/auth/login", json={"username": "admin", "password": "Admin@123"})
+        assert login_resp.status_code == 200
+        token = login_resp.json()["access_token"]
+
+        # 2. Change password with wrong current password -> 400
+        bad_change = await ac.post(
+            "/api/v1/auth/change-password",
+            json={"current_password": "WrongPassword", "new_password": "NewSecret@456"},
+            headers={"Authorization": f"Bearer {token}"}
+        )
+        assert bad_change.status_code == 400
+
+        # 3. Change password successfully
+        good_change = await ac.post(
+            "/api/v1/auth/change-password",
+            json={"current_password": "Admin@123", "new_password": "NewSecret@456"},
+            headers={"Authorization": f"Bearer {token}"}
+        )
+        assert good_change.status_code == 200
+        assert "Password updated successfully" in good_change.json()["message"]
+
+        # 4. Old password fails
+        fail_login = await ac.post("/api/v1/auth/login", json={"username": "admin", "password": "Admin@123"})
+        assert fail_login.status_code == 401
+
+        # 5. New password succeeds
+        new_login = await ac.post("/api/v1/auth/login", json={"username": "admin", "password": "NewSecret@456"})
+        assert new_login.status_code == 200
+        new_token = new_login.json()["access_token"]
+
+        # 6. Revert password back to Admin@123 for other tests
+        revert_resp = await ac.post(
+            "/api/v1/auth/change-password",
+            json={"current_password": "NewSecret@456", "new_password": "Admin@123"},
+            headers={"Authorization": f"Bearer {new_token}"}
+        )
+        assert revert_resp.status_code == 200
+

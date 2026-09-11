@@ -11,6 +11,11 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
     
+    # Default Admin Credentials
+    DEFAULT_ADMIN_USERNAME: str = "admin"
+    DEFAULT_ADMIN_PASSWORD: str = "Admin@123"
+    DEFAULT_ADMIN_EMAIL: str = "admin@college.edu"
+    
     # Database
     DATABASE_URL: str = "sqlite+aiosqlite:///./smart_attendance.db"
     

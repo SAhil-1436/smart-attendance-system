@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import LoginModal from './components/LoginModal';
+import ChangePasswordModal from './components/ChangePasswordModal';
 import StudentsList from './pages/StudentsList';
 import LiveRecognitionPreview from './pages/LiveRecognitionPreview';
 import LivenessTesterPage from './pages/LivenessTesterPage';
@@ -44,6 +45,7 @@ function DashboardContent() {
   const { user, isAuthenticated, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('overview'); // 'overview' | 'students' | 'recognition' | 'liveness' | 'attendance' | 'reports'
   const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
   const [health, setHealth] = useState(null);
@@ -128,6 +130,7 @@ function DashboardContent() {
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         onOpenLogin={() => setIsLoginOpen(true)}
+        onOpenChangePassword={() => setIsChangePasswordOpen(true)}
       />
 
       {/* Mobile Drawer (Tablet/Mobile) */}
@@ -146,6 +149,7 @@ function DashboardContent() {
           activeTab={activeTab}
           onToggleMobileMenu={() => setIsMobileDrawerOpen(true)}
           onOpenLogin={() => setIsLoginOpen(true)}
+          onOpenChangePassword={() => setIsChangePasswordOpen(true)}
           health={health}
           onLaunchKiosk={() => setActiveTab('attendance')}
         />
@@ -407,6 +411,9 @@ function DashboardContent() {
 
       {/* Global Login Modal */}
       <LoginModal isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} />
+
+      {/* Change Password Modal */}
+      <ChangePasswordModal isOpen={isChangePasswordOpen} onClose={() => setIsChangePasswordOpen(false)} />
     </div>
   );
 }

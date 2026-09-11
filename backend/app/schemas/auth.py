@@ -22,3 +22,8 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
     expires_in_minutes: int
     user: UserResponse
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+

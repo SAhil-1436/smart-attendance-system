@@ -13,13 +13,21 @@ import {
   LogIn, 
   ShieldCheck, 
   Sparkles,
-  GraduationCap
+  GraduationCap,
+  KeyRound
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../../context/AuthContext';
 import { Badge } from '../ui/Badge';
 
-export default function Sidebar({ activeTab, onSelectTab, isCollapsed, onToggleCollapse, onOpenLogin }) {
+export default function Sidebar({ 
+  activeTab, 
+  onSelectTab, 
+  isCollapsed, 
+  onToggleCollapse, 
+  onOpenLogin,
+  onOpenChangePassword 
+}) {
   const { user, isAuthenticated, logout } = useAuth();
 
   const navItems = [
@@ -195,6 +203,14 @@ export default function Sidebar({ activeTab, onSelectTab, isCollapsed, onToggleC
                 </div>
               </div>
             )}
+
+            <button
+              onClick={onOpenChangePassword}
+              title="Change Password"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-400 hover:bg-indigo-500/10 transition"
+            >
+              <KeyRound className="w-3.5 h-3.5" />
+            </button>
 
             <button
               onClick={logout}
