@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Lock, User, AlertCircle, Sparkles, Shield, GraduationCap, X, ArrowRight } from 'lucide-react';
+import { Lock, User, AlertCircle, X, ArrowRight } from 'lucide-react';
 import { Input } from './ui/Input';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
@@ -26,12 +26,6 @@ export default function LoginModal({ isOpen, onClose }) {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleQuickFill = (u, p) => {
-    setUsername(u);
-    setPassword(p);
-    setError(null);
   };
 
   return (
@@ -80,7 +74,7 @@ export default function LoginModal({ isOpen, onClose }) {
               icon={User}
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="e.g. admin or dr.sharma"
+              placeholder="Enter your username or email"
             />
           </div>
 
@@ -109,48 +103,6 @@ export default function LoginModal({ isOpen, onClose }) {
             {!loading && <ArrowRight className="w-4 h-4" />}
           </Button>
         </form>
-
-        {/* Quick Fill Testing Credentials */}
-        <div className="mt-6 pt-5 border-t border-slate-800/80">
-          <div className="text-xs text-slate-400 font-medium mb-2.5 flex items-center justify-between">
-            <span className="flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-              Quick-Select Credentials:
-            </span>
-            <span className="text-[10px] text-slate-500">Demo Profiles</span>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => handleQuickFill('admin', 'Admin@123')}
-              className="p-3 rounded-xl bg-slate-800/40 hover:bg-slate-800/80 border border-slate-700/60 text-left transition flex items-center gap-2.5 group"
-            >
-              <div className="p-1.5 rounded-lg bg-purple-500/10 text-purple-400 border border-purple-500/20 group-hover:scale-105 transition">
-                <Shield className="w-3.5 h-3.5" />
-              </div>
-              <div className="overflow-hidden">
-                <div className="text-xs font-bold text-slate-200">Admin</div>
-                <div className="text-[10px] text-slate-400 font-mono truncate">admin / Admin@123</div>
-              </div>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleQuickFill('dr.sharma', 'Faculty@123')}
-              className="p-3 rounded-xl bg-slate-800/40 hover:bg-slate-800/80 border border-slate-700/60 text-left transition flex items-center gap-2.5 group"
-            >
-              <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 group-hover:scale-105 transition">
-                <GraduationCap className="w-3.5 h-3.5" />
-              </div>
-              <div className="overflow-hidden">
-                <div className="text-xs font-bold text-slate-200">Faculty</div>
-                <div className="text-[10px] text-slate-400 font-mono truncate">dr.sharma / Faculty@123</div>
-              </div>
-            </button>
-          </div>
-        </div>
-
       </div>
     </div>
   );
