@@ -16,10 +16,16 @@ ACTION_BLINK = "BLINK"
 ACTION_SMILE = "SMILE"
 
 CHALLENGE_ACTIONS = [
-    [ACTION_TURN_LEFT, ACTION_BLINK],
-    [ACTION_TURN_RIGHT, ACTION_BLINK],
+    [ACTION_TURN_LEFT, ACTION_TURN_RIGHT],
+    [ACTION_TURN_RIGHT, ACTION_TURN_LEFT],
     [ACTION_TURN_LEFT, ACTION_SMILE],
     [ACTION_TURN_RIGHT, ACTION_SMILE],
+    [ACTION_TURN_LEFT, ACTION_BLINK],
+    [ACTION_TURN_RIGHT, ACTION_BLINK],
+    [ACTION_SMILE, ACTION_TURN_LEFT],
+    [ACTION_SMILE, ACTION_TURN_RIGHT],
+    [ACTION_SMILE, ACTION_BLINK],
+    [ACTION_BLINK, ACTION_SMILE],
 ]
 
 class LivenessChallengeSession:
@@ -34,6 +40,8 @@ class LivenessChallengeSession:
         self.receipt_token: Optional[str] = None
         self.receipt_expires_at: Optional[float] = None
         self.landmark_history: List[List[Tuple[float, float]]] = []
+        self.max_dark_ratio: float = 0.0
+        self.has_seen_open_eyes: bool = False
 
     def is_expired(self) -> bool:
         return time.time() > self.expires_at
@@ -79,7 +87,7 @@ class LivenessEngine:
         instructions = {
             ACTION_TURN_LEFT: "Please turn your head slightly to the left.",
             ACTION_TURN_RIGHT: "Please turn your head slightly to the right.",
-            ACTION_BLINK: "Please blink both eyes.",
+            ACTION_BLINK: "Please blink your eyes (or close them briefly).",
             ACTION_SMILE: "Please smile naturally."
         }
         return instructions.get(action, "Please face the camera.")
@@ -121,32 +129,42 @@ class LivenessEngine:
     @staticmethod
     def analyze_eye_openness(image: np.ndarray, landmarks: List[Tuple[float, float]]) -> Tuple[bool, float]:
         """
-        Evaluates eye region gradient variance to detect eyelid closure.
-        Open eye has dark iris & high gradient; closed eye has low gradient.
+        Evaluates eye region dark pupil/iris ratio and contrast variance to detect eyelid closure.
+        Open eye has dark pupil against sclera (high dark pixel ratio & contrast);
+        Closed eye has eyelids covering iris (low dark pixel ratio & uniform skin contrast).
+        landmarks: [right_eye, left_eye, nose_tip, right_mouth, left_mouth]
         """
         h, w = image.shape[:2]
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        eye_scores = []
+        eye_dist = float(np.linalg.norm(np.array(landmarks[0]) - np.array(landmarks[1])))
+        rw = max(10, int(eye_dist * 0.20))
+        rh = max(8, int(eye_dist * 0.14))
+
+        dark_ratios = []
+        stds = []
 
         for eye_pt in [landmarks[0], landmarks[1]]:
             ex, ey = int(eye_pt[0]), int(eye_pt[1])
-            rw, rh = 16, 12
             x1, y1 = max(0, ex - rw), max(0, ey - rh)
             x2, y2 = min(w, ex + rw), min(h, ey + rh)
-            eye_crop = gray[y1:y2, x1:x2]
-            if eye_crop.size > 0:
-                # Vertical gradient variance (open eyes have high gradient due to iris edges)
-                grad_y = cv2.Sobel(eye_crop, cv2.CV_64F, 0, 1, ksize=3)
-                grad_var = float(np.var(grad_y))
-                eye_scores.append(grad_var)
+            crop = gray[y1:y2, x1:x2]
+            if crop.size > 0:
+                mean_val = float(np.mean(crop))
+                if mean_val > 5.0:
+                    dark_ratio = float(np.mean(crop < 0.72 * mean_val))
+                    dark_ratios.append(dark_ratio)
+                std_val = float(np.std(crop))
+                stds.append(std_val)
 
-        if not eye_scores:
+        if not dark_ratios:
             return False, 0.0
 
-        avg_openness = float(np.mean(eye_scores))
-        # Closed eyes have low vertical edge gradient (< 120 depending on resolution)
-        is_closed = avg_openness < 120.0
-        return is_closed, avg_openness
+        avg_dark_ratio = float(np.mean(dark_ratios))
+        avg_std = float(np.mean(stds)) if stds else 30.0
+
+        # Eyelids closed: pupil disappears, dark ratio drops drastically (< 0.12) or contrast drops (< 22.0)
+        is_closed = (avg_dark_ratio < 0.12) or (avg_std < 22.0)
+        return is_closed, avg_dark_ratio
 
     def verify_action(
         self,
@@ -214,10 +232,24 @@ class LivenessEngine:
                 step_passed = True
 
         elif expected_action == ACTION_BLINK:
-            is_closed, openness = self.analyze_eye_openness(image, landmarks)
-            feedback_details = {"eye_closed": is_closed, "openness_score": round(openness, 1)}
-            # Passing blink requires either observing eye closure or low-openness frame
-            if is_closed or openness < 150.0:
+            is_closed, dark_ratio = self.analyze_eye_openness(image, landmarks)
+            feedback_details = {
+                "eye_closed": is_closed,
+                "dark_ratio": round(dark_ratio, 3),
+                "baseline": round(session.max_dark_ratio, 3)
+            }
+            if not is_closed:
+                # Update baseline open-eye dark ratio
+                if dark_ratio > session.max_dark_ratio:
+                    session.max_dark_ratio = dark_ratio
+                session.has_seen_open_eyes = True
+
+            # Step passed if:
+            # 1. Closed by absolute threshold (dark_ratio < 0.12 or avg_std < 22)
+            # 2. Or relative drop > 45% compared to established open-eye baseline
+            if is_closed:
+                step_passed = True
+            elif session.has_seen_open_eyes and session.max_dark_ratio >= 0.14 and dark_ratio < 0.55 * session.max_dark_ratio:
                 step_passed = True
 
         if step_passed:

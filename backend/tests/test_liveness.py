@@ -26,6 +26,21 @@ def get_blank_base64():
     _, buffer = cv2.imencode(".jpg", blank)
     return "data:image/jpeg;base64," + base64.b64encode(buffer).decode("utf-8")
 
+def get_closed_eye_base64(filepath=FIXTURE_PATH):
+    img = cv2.imread(filepath)
+    from app.cv.face_engine import face_engine
+    faces = face_engine.detect_faces(img)
+    lm = faces[0]["landmarks"]
+    eye_dist = float(np.linalg.norm(np.array(lm[0]) - np.array(lm[1])))
+    rw = max(10, int(eye_dist * 0.20))
+    rh = max(8, int(eye_dist * 0.14))
+    closed_img = img.copy()
+    for pt in [lm[0], lm[1]]:
+        ex, ey = int(pt[0]), int(pt[1])
+        closed_img[ey-rh:ey+rh, ex-rw:ex+rw] = img[int(lm[2][1]):int(lm[2][1])+2*rh, int(lm[2][0]):int(lm[2][0])+2*rw]
+    _, buffer = cv2.imencode(".jpg", closed_img)
+    return "data:image/jpeg;base64," + base64.b64encode(buffer).decode("utf-8")
+
 @pytest.fixture
 async def auth_token():
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
@@ -138,3 +153,53 @@ def test_receipt_token_lifecycle():
 
     # 2. Second validation fails (single-use anti-replay protection!)
     assert liveness_engine.validate_receipt("LIVE_test_token_12345") is False
+
+def test_eye_openness_analysis():
+    img = cv2.imread(FIXTURE_PATH)
+    from app.cv.face_engine import face_engine
+    faces = face_engine.detect_faces(img)
+    lm = faces[0]["landmarks"]
+    is_closed, dark_ratio = liveness_engine.analyze_eye_openness(img, lm)
+    assert is_closed is False
+    assert dark_ratio > 0.15
+
+    # Test with simulated closed eye
+    eye_dist = float(np.linalg.norm(np.array(lm[0]) - np.array(lm[1])))
+    rw = max(10, int(eye_dist * 0.20))
+    rh = max(8, int(eye_dist * 0.14))
+    closed_img = img.copy()
+    for pt in [lm[0], lm[1]]:
+        ex, ey = int(pt[0]), int(pt[1])
+        closed_img[ey-rh:ey+rh, ex-rw:ex+rw] = img[int(lm[2][1]):int(lm[2][1])+2*rh, int(lm[2][0]):int(lm[2][0])+2*rw]
+    is_closed_c, dark_ratio_c = liveness_engine.analyze_eye_openness(closed_img, lm)
+    assert is_closed_c is True
+    assert dark_ratio_c < 0.12
+
+@pytest.mark.asyncio
+async def test_verify_step_blink_action(auth_token):
+    session = LivenessChallengeSession("test_blink_session", [ACTION_BLINK])
+    liveness_engine._sessions["test_blink_session"] = session
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        # First frame: open eyes (baseline registered, still IN_PROGRESS)
+        res_open = await ac.post(
+            "/api/v1/attendance/liveness/verify-step",
+            json={"challenge_id": "test_blink_session", "image_data": get_base64_sample()},
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        data_open = res_open.json()
+        assert data_open["success"] is True
+        assert data_open["completed"] is False
+        assert data_open["status"] == "IN_PROGRESS"
+
+        # Second frame: eyes closed (blink registered, CHALLENGE_COMPLETED)
+        res_closed = await ac.post(
+            "/api/v1/attendance/liveness/verify-step",
+            json={"challenge_id": "test_blink_session", "image_data": get_closed_eye_base64()},
+            headers={"Authorization": f"Bearer {auth_token}"}
+        )
+        data_closed = res_closed.json()
+        assert data_closed["success"] is True
+        assert data_closed["completed"] is True
+        assert data_closed["status"] == "CHALLENGE_COMPLETED"
+        assert "receipt_token" in data_closed
