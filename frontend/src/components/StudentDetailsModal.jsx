@@ -10,12 +10,13 @@ import {
   Calendar, 
   CheckCircle2, 
   AlertCircle,
-  Fingerprint
+  Fingerprint,
+  Camera
 } from 'lucide-react';
 import Badge from './ui/Badge';
 import Button from './ui/Button';
 
-export default function StudentDetailsModal({ student, onClose }) {
+export default function StudentDetailsModal({ student, onClose, onEnrollFace }) {
   if (!student) return null;
 
   return (
@@ -64,11 +65,25 @@ export default function StudentDetailsModal({ student, onClose }) {
               </div>
             </div>
           </div>
-          {student.face_registered ? (
-            <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-          ) : (
-            <AlertCircle className="w-5 h-5 text-amber-400" />
-          )}
+          <div className="flex items-center gap-3">
+            {student.face_registered ? (
+              <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+            ) : (
+              <AlertCircle className="w-5 h-5 text-amber-400 shrink-0" />
+            )}
+
+            {onEnrollFace && (
+              <Button
+                onClick={() => onEnrollFace(student)}
+                variant={student.face_registered ? "secondary" : "primary"}
+                size="sm"
+                className="text-xs"
+              >
+                <Camera className="w-3.5 h-3.5 mr-1" />
+                <span>{student.face_registered ? 'Re-scan' : 'Enroll Face'}</span>
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Academic Details */}

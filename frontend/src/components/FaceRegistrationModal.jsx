@@ -19,7 +19,7 @@ import {
 import Button from './ui/Button';
 import Badge from './ui/Badge';
 
-export default function FaceRegistrationModal({ isOpen, onClose, student, onEnrolled }) {
+export default function FaceRegistrationModal({ isOpen = true, onClose, student, onEnrolled }) {
   if (!isOpen || !student) return null;
 
   const videoRef = useRef(null);
@@ -332,8 +332,8 @@ export default function FaceRegistrationModal({ isOpen, onClose, student, onEnro
                 <Button
                   type="button"
                   onClick={handleCaptureSample}
-                  disabled={!cameraActive || !frameFeedback?.valid}
-                  variant="glow"
+                  disabled={!cameraActive}
+                  variant={frameFeedback?.valid ? "glow" : "primary"}
                   size="sm"
                   icon={Camera}
                   className="shrink-0"

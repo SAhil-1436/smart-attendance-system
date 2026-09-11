@@ -464,6 +464,7 @@ export default function StudentsList() {
 
       {enrollingStudent && (
         <FaceRegistrationModal
+          isOpen={true}
           student={enrollingStudent}
           onClose={() => setEnrollingStudent(null)}
           onEnrolled={() => {
